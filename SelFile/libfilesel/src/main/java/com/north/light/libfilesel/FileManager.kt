@@ -21,6 +21,7 @@ class FileManager : Serializable {
     private var mListener: onSelFileListener? = null
 
     companion object {
+        @JvmStatic
         fun getInstance(): FileManager {
             return SingleHolder.mInstance
         }
@@ -28,6 +29,10 @@ class FileManager : Serializable {
 
     object SingleHolder : Serializable {
         val mInstance = FileManager()
+    }
+
+    fun getParams(): FileSelParams? {
+        return mParams
     }
 
     /**

@@ -10,6 +10,8 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        FileManager.getInstance().setParams(FileSelParams()).start(this)
+        FileManager.getInstance().setParams(FileSelParams().apply {
+            mFormat = mutableListOf("mp3","jpg","jpeg")
+        }).start(this)
     }
 }

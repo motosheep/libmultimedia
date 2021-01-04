@@ -6,7 +6,9 @@ import android.os.HandlerThread;
 import android.text.TextUtils;
 import android.util.Log;
 
+import com.north.light.libfilesel.FileManager;
 import com.north.light.libfilesel.bean.FileInfo;
+import com.north.light.libfilesel.bean.FileSelParams;
 
 import java.io.File;
 import java.io.Serializable;
@@ -150,14 +152,18 @@ public class FileScanManager implements Serializable {
         try {
             for (File f : files) {
                 if (!f.isDirectory()) {
-                    FileInfo info = new FileInfo();
-                    info.setFileName(f.getName());
-                    info.setFilePath(f.getAbsolutePath());
-                    info.setFileModifyDate(f.lastModified());
-                    info.setFileLength(f.length());
-                    info.setFileParentPath(f.getParent());
-                    getDataMap(originalPath).add(info);
-                    Log.e(TAG, "文件：" + f.getAbsolutePath() + "\t加入");
+                    FileSelParams params = FileManager.getInstance().getParams();
+                    String format = f.getName().substring(f.getName().lastIndexOf(".") + 1).toLowerCase();
+                    if (params != null && params.getMFormat().contains(format)) {
+                        FileInfo info = new FileInfo();
+                        info.setFileName(f.getName());
+                        info.setFilePath(f.getAbsolutePath());
+                        info.setFileModifyDate(f.lastModified());
+                        info.setFileLength(f.length());
+                        info.setFileParentPath(f.getParent());
+                        getDataMap(originalPath).add(info);
+                        Log.e(TAG, "加入文件路径：" + info.getFileName());
+                    }
                 } else if (f.isDirectory()) {
                     //如果是目录，迭代进入该目录
                     listFile(f, originalPath);
