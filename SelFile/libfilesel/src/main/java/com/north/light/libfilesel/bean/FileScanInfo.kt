@@ -24,9 +24,9 @@ class FileScanInfo : Serializable {
             if (TextUtils.isEmpty(key)) {
                 return ArrayList()
             }
-            val result = FileScanInfo.mScanResult[key]
+            val result = mScanResult[key]
             if (result == null || result.size == 0) {
-                FileScanInfo.mScanResult[key] = ArrayList()
+                mScanResult[key] = ArrayList()
             }
             return mScanResult[key] ?: ArrayList()
         }
