@@ -36,7 +36,7 @@ class FileSelActivity : AppCompatActivity() {
                 Log.e(TAG,"error message: $message" )
             }
         })
-        FileScanManager.getInstance().scanAll()
+        FileScanManager.getInstance().scanLocal()
     }
 
 }

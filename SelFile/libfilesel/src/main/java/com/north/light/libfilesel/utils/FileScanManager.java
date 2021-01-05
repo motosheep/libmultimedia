@@ -8,15 +8,16 @@ import android.util.Log;
 
 import com.north.light.libfilesel.FileManager;
 import com.north.light.libfilesel.bean.FileInfo;
+import com.north.light.libfilesel.bean.FileScanInfo;
 import com.north.light.libfilesel.bean.FileSelParams;
+
+import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -24,7 +25,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * time 2021/1/4
  * 描述：文件扫描工具类
  */
-public class FileScanManager implements Serializable {
+public class FileScanManager implements Serializable, FileScanManagerInterface {
     private static final String TAG = FileScanManager.class.getSimpleName();
     //相关线程
     private Handler mIOHandler;
@@ -32,12 +33,11 @@ public class FileScanManager implements Serializable {
     private Context mContext;
     //监听
     private ScanFileListener mListener;
-    //扫描结果
-    private ConcurrentMap<String, List<FileInfo>> mScanResult = new ConcurrentHashMap<>();
     //u最大线程数量
     private int MAX_THREAD_COUNT = 10;
     //线程计数器
     private AtomicInteger mThreadCounter = new AtomicInteger(0);
+
 
     private static final class SingleHolder {
         static final FileScanManager mInstance = new FileScanManager();
@@ -47,10 +47,25 @@ public class FileScanManager implements Serializable {
         return SingleHolder.mInstance;
     }
 
+    @Override
+    public void scanLocal() {
+        String localRootPath = OpenFileUtils.getRootPath();
+        if (!TextUtils.isEmpty(localRootPath)) {
+            scanStart(localRootPath);
+        }
+    }
+
+    @Override
+    public void scanDatabase() {
+
+    }
+
+
     /**
      * 初始化
      */
-    public void init(Context context) {
+    @Override
+    public void init(@NotNull Context context) {
         if (mContext == null && context != null) {
             mContext = context.getApplicationContext();
             mIOThread = new HandlerThread("FILESCANMANAGER_IO_THREAD");
@@ -62,6 +77,7 @@ public class FileScanManager implements Serializable {
     /**
      * 释放
      */
+    @Override
     public void release() {
         try {
             if (mIOHandler != null) {
@@ -73,16 +89,6 @@ public class FileScanManager implements Serializable {
             mContext = null;
         } catch (Exception e) {
             Log.e(TAG, e.getMessage() + "");
-        }
-    }
-
-    /**
-     * 扫描全部文件
-     */
-    public void scanAll() {
-        String localRootPath = OpenFileUtils.getRootPath();
-        if (!TextUtils.isEmpty(localRootPath)) {
-            scanStart(localRootPath);
         }
     }
 
@@ -106,18 +112,12 @@ public class FileScanManager implements Serializable {
                 mListener.error("扫描线程错误，停止扫描");
             return;
         }
-        scan(path);
-    }
-
-    /**
-     * 扫描--通过数据集合，平局分配对应的线程任务
-     */
-    private void scan(final String path) {
+        //扫描--通过数据集合，平局分配对应的线程任务
         try {
             mIOHandler.removeCallbacksAndMessages(null);
-            getDataMap(path).clear();
+            FileScanInfo.Companion.getDataMap(path).clear();
             File[] files = new File(path).listFiles();
-            final List<List<File>> result = splitList(Arrays.asList(files), MAX_THREAD_COUNT);
+            final List<List<File>> result = ListSpilt.splitList(Arrays.asList(files), MAX_THREAD_COUNT);
             final List<List<File>> finalList = new ArrayList(result);
             //启动多线程进行扫描
             for (int i = 0; i < MAX_THREAD_COUNT; i++) {
@@ -135,9 +135,9 @@ public class FileScanManager implements Serializable {
                         //已经没有需要扫描的目录
                         mIOHandler.removeCallbacks(this);
                         mThreadCounter.decrementAndGet();
-                        if(mThreadCounter.get()==0){
+                        if (mThreadCounter.get() == 0) {
                             //扫描完成
-                            mListener.scanResult(getDataMap(path));
+                            mListener.scanResult(FileScanInfo.Companion.getDataMap(path));
                         }
                     }
                 });
@@ -146,25 +146,14 @@ public class FileScanManager implements Serializable {
             }
         } catch (Exception e) {
             if (mListener != null) {
-                mListener.scanResult(getDataMap(path));
+                mListener.scanResult(FileScanInfo.Companion.getDataMap(path));
             }
         }
     }
 
     /**
-     * 获取内存中的数据集合--key--value
+     * list file递归
      */
-    private List<FileInfo> getDataMap(String key) {
-        if (TextUtils.isEmpty(key)) {
-            return new ArrayList<FileInfo>();
-        }
-        List<FileInfo> result = mScanResult.get(key);
-        if (result == null || result.size() == 0) {
-            mScanResult.put(key, new ArrayList<FileInfo>());
-        }
-        return mScanResult.get(key);
-    }
-
     private void listFile(File file, String originalPath) {
         File[] files = file.listFiles();
         try {
@@ -180,7 +169,7 @@ public class FileScanManager implements Serializable {
                             info.setFileModifyDate(f.lastModified());
                             info.setFileLength(f.length());
                             info.setFileParentPath(f.getParent());
-                            getDataMap(originalPath).add(info);
+                            FileScanInfo.Companion.getDataMap(originalPath).add(info);
                             Log.e(TAG, "加入文件路径：" + info.getFileName());
                         }
                     } else if (f.isDirectory()) {
@@ -191,24 +180,6 @@ public class FileScanManager implements Serializable {
         } catch (Exception e) {
             e.printStackTrace();
         }
-    }
-
-    /**
-     * 分割List
-     */
-    public static <T> List<List<T>> splitList(List<T> list, int groupSize) {
-        int length = list.size();
-        // 计算可以分成多少组
-        int num = (length + groupSize - 1) / groupSize; // TODO
-        List<List<T>> newList = new ArrayList<>(num);
-        for (int i = 0; i < num; i++) {
-            // 开始位置
-            int fromIndex = i * groupSize;
-            // 结束位置
-            int toIndex = (i + 1) * groupSize < length ? (i + 1) * groupSize : length;
-            newList.add(list.subList(fromIndex, toIndex));
-        }
-        return newList;
     }
 
     /**
