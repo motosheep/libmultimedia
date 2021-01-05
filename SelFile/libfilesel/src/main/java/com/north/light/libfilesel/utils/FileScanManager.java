@@ -90,7 +90,7 @@ public class FileScanManager implements Serializable {
     /**
      * 扫描特定目录下的文件
      */
-    public void scanStart(final String path) {
+    private void scanStart(final String path) {
         if (mContext == null || mIOHandler == null) {
             if (mListener != null)
                 mListener.error("初始化失败，停止扫描");
@@ -118,6 +118,7 @@ public class FileScanManager implements Serializable {
             getDataMap(path).clear();
             File[] files = new File(path).listFiles();
             final List<List<File>> result = splitList(Arrays.asList(files), MAX_THREAD_COUNT);
+            final List<List<File>> finalList = new ArrayList(result);
             //启动多线程进行扫描
             for (int i = 0; i < MAX_THREAD_COUNT; i++) {
                 //多线程
@@ -125,7 +126,7 @@ public class FileScanManager implements Serializable {
                 mIOHandler.post(new Runnable() {
                     @Override
                     public void run() {
-                        final List<File> cacheFile = result.get(finalI);
+                        final List<File> cacheFile = finalList.get(finalI);
                         final List<File> arrList = new ArrayList(cacheFile);
                         while (arrList.size() > 0) {
                             listFile(arrList.get(arrList.size() - 1), path);
