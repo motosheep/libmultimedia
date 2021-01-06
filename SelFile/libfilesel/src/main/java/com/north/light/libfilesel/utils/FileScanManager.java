@@ -86,6 +86,7 @@ public class FileScanManager implements Serializable, FileScanManagerInterface {
     @Override
     public void release() {
         try {
+            FileThreadManager.getInstance().closeAllExecutors();
             if (mIOHandler != null) {
                 mIOHandler.removeCallbacksAndMessages(null);
             }
@@ -120,7 +121,7 @@ public class FileScanManager implements Serializable, FileScanManagerInterface {
         }
         //扫描--通过数据集合，平局分配对应的线程任务
         try {
-            FileThreadManager.getInstance().closeCacheExecutors("");
+            FileThreadManager.getInstance().closeAllExecutors();
             mIOHandler.removeCallbacksAndMessages(null);
             FileScanInfo.Companion.getDataMap(path).clear();
             File[] files = new File(path).listFiles();
@@ -136,7 +137,7 @@ public class FileScanManager implements Serializable, FileScanManagerInterface {
                 public void run() {
                     while (true) {
                         try {
-                            Thread.sleep(20);
+                            Thread.sleep(10);
                         } catch (InterruptedException e) {
                             e.printStackTrace();
                         }
@@ -149,7 +150,7 @@ public class FileScanManager implements Serializable, FileScanManagerInterface {
                             if (mNumCounter.get() == finalList.size()) {
                                 continue;
                             }
-                            FileThreadManager.getInstance().getCacheExecutors("").execute(
+                            FileThreadManager.getInstance().getAutoExecutors(mNumCounter.get()).execute(
                                     new ScanRunnable(finalList.get(mNumCounter.getAndIncrement()), path, new ScanRunnable.FinishCallback() {
                                         @Override
                                         public void finish() {
