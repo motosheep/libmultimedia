@@ -15,7 +15,6 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.Serializable;
-import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -26,7 +25,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Created by lzt
  * time 2021/1/4
  * 描述：文件扫描工具类
- *
+ * <p>
  * 使用：---
  * 1、init(this)
  * 2、监听
@@ -176,23 +175,27 @@ public class FileScanManager implements Serializable, FileScanManagerInterface {
     private class ScanRunnable implements Runnable {
         private List<File> scanPath;
         private String path;
-        private WeakReference<FinishCallback> listener;
+        private FinishCallback listener;
 
         public ScanRunnable(List<File> file, String path, FinishCallback callback) {
             this.scanPath = file;
             this.path = path;
-            this.listener = new WeakReference<>(callback);
-            this.listener.get().init();
+            this.listener = callback;
+            this.listener.init();
         }
 
         @Override
         public void run() {
             for (File file : scanPath) {
+                if (FileScanInfo.getMStopTAG().get()) {
+                    break;
+                }
                 listFile(file, path);
             }
-            if(this.listener!=null&&this.listener.get()!=null){
-                listener.get().finish();
+            if (this.listener != null) {
+                listener.finish();
             }
+            listener = null;
         }
 
     }

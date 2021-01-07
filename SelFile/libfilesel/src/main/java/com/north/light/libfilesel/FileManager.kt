@@ -13,6 +13,7 @@ import java.io.Serializable
  * Created by lzt
  * time 2021/1/4
  * 描述：文件管理类，用于设置访问参数
+ * 使用--构造者模式，直接使用即可
  */
 class FileManager : Serializable {
     //文件选择参数
