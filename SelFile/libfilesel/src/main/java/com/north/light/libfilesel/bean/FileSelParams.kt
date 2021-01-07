@@ -12,16 +12,9 @@ class FileSelParams : Serializable {
     var mFormat: MutableList<String> = ArrayList()
     //选择的数量
     var mSelNum: Int = 9
-    //选择文件的大小--默认为0不过滤
-    var mSelSize: Long = 0
-
-//    /**
-//     * 重置参数
-//     * */
-//    fun reset() {
-//        mFormat.clear()
-//        mSelSize = 0
-//        mSelNum = 9
-//    }
+    //选择文件的大小--默认为0不过滤--最小的大小--字节为单位
+    var mSelMinSize: Long = 0
+    //选择文件的大小--默认为0不过滤--最大的大小--字节为单位
+    var mSelMaxSize: Long = 0
 
 }

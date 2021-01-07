@@ -215,7 +215,18 @@ public class FileScanManager implements Serializable, FileScanManagerInterface {
                     if (!f.isDirectory()) {
                         FileSelParams params = FileManager.getInstance().getParams();
                         String format = f.getName().substring(f.getName().lastIndexOf(".") + 1).toLowerCase();
-                        if (params != null && params.getMFormat().contains(format)) {
+                        if (params != null) {
+                            //格式判断
+                            if (!params.getMFormat().contains(format)) {
+                                continue;
+                            }
+                            //文件大小判断
+                            if (params.getMSelMinSize() != 0 && params.getMSelMinSize() > f.length()) {
+                                continue;
+                            }
+                            if (params.getMSelMaxSize() != 0 && params.getMSelMaxSize() < f.length()) {
+                                continue;
+                            }
                             FileInfo info = new FileInfo();
                             info.setFileName(f.getName());
                             info.setFilePath(f.getAbsolutePath());

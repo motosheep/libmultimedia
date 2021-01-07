@@ -29,11 +29,11 @@ class FileSelActivity : AppCompatActivity() {
         FileScanManager.getInstance().init(this)
         FileScanManager.getInstance().setScanFileListener(object :FileScanManager.ScanFileListener{
             override fun scanResult(result: MutableList<FileInfo>?) {
-                Log.e(TAG,"scanResult: ${Gson().toJson(result)}" )
+                FileManager.getInstance().fileResult(result)
             }
 
             override fun error(message: String?) {
-                Log.e(TAG,"error message: $message" )
+                FileManager.getInstance().fileError(message)
             }
         })
         FileScanManager.getInstance().scanLocal()

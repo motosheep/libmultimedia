@@ -17,7 +17,7 @@ class MainActivity : AppCompatActivity() {
 
     public fun scan(view: View) {
         FileManager.getInstance().setParams(FileSelParams().apply {
-            mFormat = mutableListOf("mp3", "jpg", "jpeg")
+            mFormat = mutableListOf("mp3")
         }).start(this)
     }
 }

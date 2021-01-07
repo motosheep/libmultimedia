@@ -32,13 +32,6 @@ class FileManager : Serializable {
         val mInstance = FileManager()
     }
 
-    /**
-     * 初始化
-     * */
-    fun init(){
-
-    }
-
     fun getParams(): FileSelParams? {
         return mParams
     }
@@ -60,8 +53,10 @@ class FileManager : Serializable {
         activity.startActivity(intent)
     }
 
+    //activity返回---------------------------------------------
+
     /**
-     * activity result返回
+     * activity result返回结果
      * */
     fun fileResult(data: MutableList<FileInfo>?) {
         //返回选择文件路径结果
@@ -73,20 +68,10 @@ class FileManager : Serializable {
     }
 
     /**
-     * 生成json list
-     */
-    fun <T> getJsonList(jsonString: String, cls: Class<T>): MutableList<T> {
-        val list = ArrayList<T>()
-        try {
-            val gson = Gson()
-            val arry = JsonParser().parse(jsonString).asJsonArray
-            for (jsonElement in arry) {
-                list.add(gson.fromJson(jsonElement, cls))
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-        return list
+     * activity 扫描错误
+     * */
+    fun fileError(message: String?){
+        mListener?.error(message)
     }
 
     //监听事件-----------------------------------
@@ -98,5 +83,10 @@ class FileManager : Serializable {
     fun setOnSelListener(listener: onSelFileListener) {
         this.mListener = listener
     }
+
+    fun removeSelListener(){
+        this.mListener=null
+    }
+
 
 }
