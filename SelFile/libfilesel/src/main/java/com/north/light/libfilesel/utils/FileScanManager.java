@@ -5,7 +5,6 @@ import android.content.Context;
 import android.database.Cursor;
 import android.provider.MediaStore;
 import android.text.TextUtils;
-import android.util.Log;
 
 import com.north.light.libfilesel.FileManager;
 import com.north.light.libfilesel.api.FinishCallback;
@@ -174,7 +173,6 @@ public class FileScanManager implements Serializable, FileScanManagerInterface {
             FileThreadManager.getInstance().closeAllExecutors();
             mContext = null;
         } catch (Exception e) {
-            Log.e(TAG, e.getMessage() + "");
         }
     }
 
@@ -205,7 +203,6 @@ public class FileScanManager implements Serializable, FileScanManagerInterface {
             mThreadCounter.set(0);
             mNumCounter.set(0);
             mNewThreadTAG.set(true);
-            Log.e(TAG, "cachePos开始---");
             FileScanInfo.Companion.clearMap(path);
             FileThreadManager.getInstance().getCacheExecutors("SCAN_PARENT").execute(new Runnable() {
                 @Override
@@ -232,7 +229,6 @@ public class FileScanManager implements Serializable, FileScanManagerInterface {
                                                 if (mListener != null) {
                                                     mListener.scanResult(FileScanInfo.Companion.getDataMap(path));
                                                 }
-                                                Log.e(TAG, "cachePos扫描完---");
                                             }
                                         }
 

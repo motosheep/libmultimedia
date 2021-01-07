@@ -1,22 +1,17 @@
 package com.north.light.libfilesel.ui
 
-import android.content.Intent
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.util.Log
-import com.google.gson.Gson
-import com.north.light.libfilesel.FileManager
+import androidx.appcompat.app.AppCompatActivity
 import com.north.light.libfilesel.R
-import com.north.light.libfilesel.bean.FileInfo
-import com.north.light.libfilesel.utils.FileScanManager
+import kotlinx.android.synthetic.main.activity_file_sel.*
 
 
 /**
  * 文件选择activity
+ * FileManager.getInstance().fileResult(result)
+ * FileManager.getInstance().fileError(message)
  * */
 class FileSelActivity : AppCompatActivity() {
-    val TAG = FileSelActivity::class.java.simpleName
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -25,24 +20,25 @@ class FileSelActivity : AppCompatActivity() {
     }
 
     private fun initData() {
-        //查询数据
-        FileScanManager.getInstance().init(this)
-        FileScanManager.getInstance().setScanFileListener(object :FileScanManager.ScanFileListener{
-            override fun scanResult(result: MutableList<FileInfo>?) {
-                FileManager.getInstance().fileResult(result)
-            }
+        //设置fragment
+        supportFragmentManager.beginTransaction()
+            .replace(R.id.activity_file_sel_content, FileSelFragment.newInstance())
+            .commitAllowingStateLoss()
 
-            override fun error(message: String?) {
-                FileManager.getInstance().fileError(message)
+        //点击监听
+        activity_file_sel_back.setOnClickListener {
+            finish()
+        }
+        activity_file_sel_confirm.setOnClickListener {
+            //选择
+            for (frag in supportFragmentManager.fragments) {
+                (frag as? BaseFileSelFragment)?.confirm()
             }
-        })
-        FileScanManager.getInstance().scanDatabase()
+        }
     }
 
 
     override fun onDestroy() {
-        FileScanManager.getInstance().removeScanFileListener()
-        FileScanManager.getInstance().release()
         super.onDestroy()
     }
 

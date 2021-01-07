@@ -8,7 +8,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 /**
  * Created by lzt
  * time 2021/1/5
- * 描述：文件扫描存储对象
+ * 描述：文件扫描存储对象--用于扫描时，数据的存储
  */
 class FileScanInfo : Serializable {
 
@@ -43,6 +43,13 @@ class FileScanInfo : Serializable {
             if (result != null) {
                 mScanResult.remove(key)
             }
+        }
+
+        /**
+         * 清空所有数据
+         * */
+        fun clearAll(){
+            mScanResult.clear()
         }
     }
 
