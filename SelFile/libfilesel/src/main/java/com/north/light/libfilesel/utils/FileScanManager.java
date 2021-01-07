@@ -1,6 +1,9 @@
 package com.north.light.libfilesel.utils;
 
+import android.content.ContentResolver;
 import android.content.Context;
+import android.database.Cursor;
+import android.provider.MediaStore;
 import android.text.TextUtils;
 import android.util.Log;
 
@@ -9,6 +12,7 @@ import com.north.light.libfilesel.api.FinishCallback;
 import com.north.light.libfilesel.bean.FileInfo;
 import com.north.light.libfilesel.bean.FileScanInfo;
 import com.north.light.libfilesel.bean.FileSelParams;
+import com.north.light.libfilesel.thread.FileScanRunnable;
 import com.north.light.libfilesel.thread.FileThreadManager;
 
 import org.jetbrains.annotations.NotNull;
@@ -38,15 +42,25 @@ public class FileScanManager implements Serializable, FileScanManagerInterface {
     private Context mContext;
     //监听
     private ScanFileListener mListener;
-    //一个List的大小--分割list
-    private int MAX_LIST_COUNT = 5;
 
+
+    //全盘扫描----------------------------------------------------------
     //计数器--管理线程数量大小
     private static AtomicInteger mThreadCounter = new AtomicInteger(0);
     private static AtomicInteger mTotalCounter = new AtomicInteger(0);
     private static AtomicBoolean mNewThreadTAG = new AtomicBoolean(true);
     private static AtomicInteger mNumCounter = new AtomicInteger(0);
+    //一个List的大小--分割list
+    private int MAX_LIST_COUNT = 5;
     private final int THREAD_COUNT = 20;
+    //全盘扫描----------------------------------------------------------
+
+
+    //content provider扫描----------------------------------------------------------
+
+
+    //content provider扫描----------------------------------------------------------
+
 
     private static final class SingleHolder {
         static final FileScanManager mInstance = new FileScanManager();
@@ -56,6 +70,9 @@ public class FileScanManager implements Serializable, FileScanManagerInterface {
         return SingleHolder.mInstance;
     }
 
+    /**
+     * 递归扫描本地文件
+     */
     @Override
     public void scanLocal() {
         String localRootPath = OpenFileUtils.getRootPath();
@@ -64,9 +81,76 @@ public class FileScanManager implements Serializable, FileScanManagerInterface {
         }
     }
 
+    /**
+     * 扫描content provider
+     */
     @Override
     public void scanDatabase() {
-
+        FileScanInfo.setMStopTAG(new AtomicBoolean(false));
+        FileThreadManager.getInstance().closeAllExecutors();
+        FileThreadManager.getInstance().getCacheExecutors("LOCAL_DATABASE").execute(new Runnable() {
+            @Override
+            public void run() {
+                ContentResolver provider = mContext.getContentResolver();
+                //通过循环查询数据
+                String[] columns = new String[]{MediaStore.Files.FileColumns._ID,
+                        MediaStore.Files.FileColumns.MIME_TYPE,
+                        MediaStore.Files.FileColumns.SIZE,
+                        MediaStore.Files.FileColumns.DATE_MODIFIED,
+                        MediaStore.Files.FileColumns.DATA};
+//        String select = "(_data LIKE '%.pdf')";
+                Cursor cursor = provider.query(MediaStore.Files.getContentUri("external"),
+                        columns, null, null, null);
+//        Cursor cursor = provider.query(MediaStore.Files.getContentUri("external"),
+//                null, null, null, null);
+                int columnIndexOrThrow_DATA = 0;
+                if (cursor != null) {
+                    columnIndexOrThrow_DATA = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA);
+                }
+                if (cursor != null) {
+                    FileScanInfo.Companion.clearMap("database");
+                    try {
+                        while (cursor.moveToNext() && !FileScanInfo.getMStopTAG().get()) {
+                            String path = cursor.getString(columnIndexOrThrow_DATA);
+                            File cacheFile = new File(path);
+                            if (!cacheFile.isDirectory()) {
+                                FileSelParams params = FileManager.getInstance().getParams();
+                                if (params == null) {
+                                    continue;
+                                }
+                                String format = cacheFile.getName().substring(cacheFile.getName().lastIndexOf(".") + 1).toLowerCase();
+                                if (!params.getMFormat().contains(format)) {
+                                    continue;
+                                }
+                                //文件大小判断
+                                if (params.getMSelMinSize() != 0L && params.getMSelMinSize() > cacheFile.length()) {
+                                    continue;
+                                }
+                                if (params.getMSelMaxSize() != 0L && params.getMSelMaxSize() < cacheFile.length()) {
+                                    continue;
+                                }
+                                //至此，认为符合条件--加入集合
+                                FileInfo info = new FileInfo();
+                                info.setFileName(cacheFile.getName());
+                                info.setFilePath(cacheFile.getAbsolutePath());
+                                info.setFileModifyDate(cacheFile.lastModified());
+                                info.setFileLength(cacheFile.length());
+                                info.setFileParentPath(cacheFile.getParent());
+                                FileScanInfo.Companion.getDataMap("database").add(info);
+                            }
+                        }
+                        if (mListener != null) {
+                            mListener.scanResult(FileScanInfo.Companion.getDataMap("database"));
+                        }
+                    } catch (Exception e) {
+                        if (mListener != null) {
+                            mListener.error(e.getMessage());
+                        }
+                    }
+                }
+                cursor.close();
+            }
+        });
     }
 
 
@@ -96,7 +180,7 @@ public class FileScanManager implements Serializable, FileScanManagerInterface {
 
 
     /**
-     * 扫描特定目录下的文件
+     * 全盘扫描：扫描特定目录下的文件
      */
     private void scanStart(final String path) {
         if (mContext == null) {
@@ -122,6 +206,7 @@ public class FileScanManager implements Serializable, FileScanManagerInterface {
             mNumCounter.set(0);
             mNewThreadTAG.set(true);
             Log.e(TAG, "cachePos开始---");
+            FileScanInfo.Companion.clearMap(path);
             FileThreadManager.getInstance().getCacheExecutors("SCAN_PARENT").execute(new Runnable() {
                 @Override
                 public void run() {
@@ -136,7 +221,7 @@ public class FileScanManager implements Serializable, FileScanManagerInterface {
                                 continue;
                             }
                             FileThreadManager.getInstance().getAutoCacheExecutors(mNumCounter.get(),
-                                    new ScanRunnable(finalList.get(mNumCounter.getAndIncrement()), path, new FinishCallback() {
+                                    new FileScanRunnable(finalList.get(mNumCounter.getAndIncrement()), path, new FinishCallback() {
                                         @Override
                                         public void finish() {
                                             mThreadCounter.decrementAndGet();
@@ -165,84 +250,6 @@ public class FileScanManager implements Serializable, FileScanManagerInterface {
             if (mListener != null) {
                 mListener.scanResult(FileScanInfo.Companion.getDataMap(path));
             }
-        }
-    }
-
-    /**
-     * handler runnable
-     * 弱引用--leak memory
-     */
-    private class ScanRunnable implements Runnable {
-        private List<File> scanPath;
-        private String path;
-        private FinishCallback listener;
-
-        public ScanRunnable(List<File> file, String path, FinishCallback callback) {
-            this.scanPath = file;
-            this.path = path;
-            this.listener = callback;
-            this.listener.init();
-        }
-
-        @Override
-        public void run() {
-            for (File file : scanPath) {
-                if (FileScanInfo.getMStopTAG().get()) {
-                    break;
-                }
-                listFile(file, path);
-            }
-            if (this.listener != null) {
-                listener.finish();
-            }
-            listener = null;
-        }
-
-    }
-
-    /**
-     * list file递归
-     * 使用递归标识控制
-     */
-    private static void listFile(File file, String originalPath) {
-        if (FileScanInfo.getMStopTAG().get()) {
-            return;
-        }
-        File[] files = file.listFiles();
-        try {
-            if (files != null)
-                for (File f : files) {
-                    if (!f.isDirectory()) {
-                        FileSelParams params = FileManager.getInstance().getParams();
-                        String format = f.getName().substring(f.getName().lastIndexOf(".") + 1).toLowerCase();
-                        if (params != null) {
-                            //格式判断
-                            if (!params.getMFormat().contains(format)) {
-                                continue;
-                            }
-                            //文件大小判断
-                            if (params.getMSelMinSize() != 0 && params.getMSelMinSize() > f.length()) {
-                                continue;
-                            }
-                            if (params.getMSelMaxSize() != 0 && params.getMSelMaxSize() < f.length()) {
-                                continue;
-                            }
-                            FileInfo info = new FileInfo();
-                            info.setFileName(f.getName());
-                            info.setFilePath(f.getAbsolutePath());
-                            info.setFileModifyDate(f.lastModified());
-                            info.setFileLength(f.length());
-                            info.setFileParentPath(f.getParent());
-                            FileScanInfo.Companion.getDataMap(originalPath).add(info);
-                            Log.d(TAG, "加入文件路径：" + info.getFileName());
-                        }
-                    } else if (f.isDirectory()) {
-                        //如果是目录，迭代进入该目录
-                        listFile(f, originalPath);
-                    }
-                }
-        } catch (Exception e) {
-            e.printStackTrace();
         }
     }
 
