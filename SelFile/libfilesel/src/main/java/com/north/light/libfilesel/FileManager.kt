@@ -31,6 +31,13 @@ class FileManager : Serializable {
         val mInstance = FileManager()
     }
 
+    /**
+     * 初始化
+     * */
+    fun init(){
+
+    }
+
     fun getParams(): FileSelParams? {
         return mParams
     }

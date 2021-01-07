@@ -1,12 +1,11 @@
 package com.north.light.libfilesel.utils;
 
 import android.content.Context;
-import android.os.Handler;
-import android.os.HandlerThread;
 import android.text.TextUtils;
 import android.util.Log;
 
 import com.north.light.libfilesel.FileManager;
+import com.north.light.libfilesel.api.FinishCallback;
 import com.north.light.libfilesel.bean.FileInfo;
 import com.north.light.libfilesel.bean.FileScanInfo;
 import com.north.light.libfilesel.bean.FileSelParams;
@@ -16,6 +15,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.Serializable;
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -26,17 +26,21 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Created by lzt
  * time 2021/1/4
  * 描述：文件扫描工具类
+ *
+ * 使用：---
+ * 1、init(this)
+ * 2、监听
+ * 3、扫描
+ * 4、移除监听
+ * 5、release（）
  */
 public class FileScanManager implements Serializable, FileScanManagerInterface {
     private static final String TAG = FileScanManager.class.getSimpleName();
-    //相关线程
-    private Handler mIOHandler;
-    private HandlerThread mIOThread;
     private Context mContext;
     //监听
     private ScanFileListener mListener;
     //一个List的大小--分割list
-    private int MAX_LIST_COUNT = 10;
+    private int MAX_LIST_COUNT = 5;
 
     //计数器--管理线程数量大小
     private static AtomicInteger mThreadCounter = new AtomicInteger(0);
@@ -72,11 +76,8 @@ public class FileScanManager implements Serializable, FileScanManagerInterface {
      */
     @Override
     public void init(@NotNull Context context) {
-        if (mContext == null && context != null) {
+        if (mContext == null) {
             mContext = context.getApplicationContext();
-            mIOThread = new HandlerThread("FILESCANMANAGER_IO_THREAD");
-            mIOThread.start();
-            mIOHandler = new Handler(mIOThread.getLooper());
         }
     }
 
@@ -86,13 +87,8 @@ public class FileScanManager implements Serializable, FileScanManagerInterface {
     @Override
     public void release() {
         try {
+            FileScanInfo.setMStopTAG(new AtomicBoolean(true));
             FileThreadManager.getInstance().closeAllExecutors();
-            if (mIOHandler != null) {
-                mIOHandler.removeCallbacksAndMessages(null);
-            }
-            if (mIOThread != null) {
-                mIOThread.getLooper().quit();
-            }
             mContext = null;
         } catch (Exception e) {
             Log.e(TAG, e.getMessage() + "");
@@ -104,7 +100,7 @@ public class FileScanManager implements Serializable, FileScanManagerInterface {
      * 扫描特定目录下的文件
      */
     private void scanStart(final String path) {
-        if (mContext == null || mIOHandler == null) {
+        if (mContext == null) {
             if (mListener != null)
                 mListener.error("初始化失败，停止扫描");
             return;
@@ -114,15 +110,10 @@ public class FileScanManager implements Serializable, FileScanManagerInterface {
                 mListener.error("目录错误，停止扫描");
             return;
         }
-        if (mIOHandler == null) {
-            if (mListener != null)
-                mListener.error("扫描线程错误，停止扫描");
-            return;
-        }
         //扫描--通过数据集合，平局分配对应的线程任务
         try {
+            FileScanInfo.setMStopTAG(new AtomicBoolean(false));
             FileThreadManager.getInstance().closeAllExecutors();
-            mIOHandler.removeCallbacksAndMessages(null);
             FileScanInfo.Companion.getDataMap(path).clear();
             File[] files = new File(path).listFiles();
             final List<List<File>> result = ListSpilt.splitList(Arrays.asList(files), MAX_LIST_COUNT);
@@ -132,15 +123,10 @@ public class FileScanManager implements Serializable, FileScanManagerInterface {
             mNumCounter.set(0);
             mNewThreadTAG.set(true);
             Log.e(TAG, "cachePos开始---");
-            mIOHandler.post(new Runnable() {
+            FileThreadManager.getInstance().getCacheExecutors("SCAN_PARENT").execute(new Runnable() {
                 @Override
                 public void run() {
-                    while (true) {
-                        try {
-                            Thread.sleep(10);
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
-                        }
+                    while (!FileScanInfo.getMStopTAG().get()) {
                         if (mThreadCounter.get() < THREAD_COUNT) {
                             if (!mNewThreadTAG.get()) {
                                 continue;
@@ -150,8 +136,8 @@ public class FileScanManager implements Serializable, FileScanManagerInterface {
                             if (mNumCounter.get() == finalList.size()) {
                                 continue;
                             }
-                            FileThreadManager.getInstance().getAutoExecutors(mNumCounter.get()).execute(
-                                    new ScanRunnable(finalList.get(mNumCounter.getAndIncrement()), path, new ScanRunnable.FinishCallback() {
+                            FileThreadManager.getInstance().getAutoCacheExecutors(mNumCounter.get(),
+                                    new ScanRunnable(finalList.get(mNumCounter.getAndIncrement()), path, new FinishCallback() {
                                         @Override
                                         public void finish() {
                                             mThreadCounter.decrementAndGet();
@@ -185,17 +171,18 @@ public class FileScanManager implements Serializable, FileScanManagerInterface {
 
     /**
      * handler runnable
+     * 弱引用--leak memory
      */
-    private static class ScanRunnable implements Runnable {
+    private class ScanRunnable implements Runnable {
         private List<File> scanPath;
         private String path;
-        private FinishCallback listener;
+        private WeakReference<FinishCallback> listener;
 
         public ScanRunnable(List<File> file, String path, FinishCallback callback) {
             this.scanPath = file;
             this.path = path;
-            this.listener = callback;
-            this.listener.init();
+            this.listener = new WeakReference<>(callback);
+            this.listener.get().init();
         }
 
         @Override
@@ -203,20 +190,21 @@ public class FileScanManager implements Serializable, FileScanManagerInterface {
             for (File file : scanPath) {
                 listFile(file, path);
             }
-            listener.finish();
+            if(this.listener!=null&&this.listener.get()!=null){
+                listener.get().finish();
+            }
         }
 
-        interface FinishCallback {
-            void finish();
-
-            void init();
-        }
     }
 
     /**
      * list file递归
+     * 使用递归标识控制
      */
     private static void listFile(File file, String originalPath) {
+        if (FileScanInfo.getMStopTAG().get()) {
+            return;
+        }
         File[] files = file.listFiles();
         try {
             if (files != null)
@@ -255,6 +243,10 @@ public class FileScanManager implements Serializable, FileScanManagerInterface {
 
     public void setScanFileListener(ScanFileListener listener) {
         this.mListener = listener;
+    }
+
+    public void removeScanFileListener() {
+        this.mListener = null;
     }
 
 }

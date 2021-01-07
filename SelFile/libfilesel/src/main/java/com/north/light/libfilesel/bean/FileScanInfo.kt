@@ -3,6 +3,7 @@ package com.north.light.libfilesel.bean
 import android.text.TextUtils
 import java.io.Serializable
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Created by lzt
@@ -15,6 +16,9 @@ class FileScanInfo : Serializable {
         //扫描结果
         @JvmStatic
         var mScanResult = ConcurrentHashMap<String, MutableList<FileInfo>>()
+        //停止递归标识--用于线程结束
+        @JvmStatic
+        var mStopTAG = AtomicBoolean(false)
 
 
         /**

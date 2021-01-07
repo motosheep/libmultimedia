@@ -41,6 +41,7 @@ class FileSelActivity : AppCompatActivity() {
 
 
     override fun onDestroy() {
+        FileScanManager.getInstance().removeScanFileListener()
         FileScanManager.getInstance().release()
         super.onDestroy()
     }
