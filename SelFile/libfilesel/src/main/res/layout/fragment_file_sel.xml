@@ -8,5 +8,6 @@
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/fragment_file_sel_recyclerview"
         android:layout_width="match_parent"
+        android:background="@color/file_theme_content_color"
         android:layout_height="match_parent" />
 </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>

@@ -15,7 +15,6 @@ abstract class BaseFileSelFragment : Fragment() {
      * 选择数据
      * */
     open fun confirm() {
-
     }
 
     /**

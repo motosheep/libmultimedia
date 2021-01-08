@@ -2,8 +2,6 @@ package com.north.light.libfilesel
 
 import android.app.Activity
 import android.content.Intent
-import com.google.gson.Gson
-import com.google.gson.JsonParser
 import com.north.light.libfilesel.bean.FileInfo
 import com.north.light.libfilesel.bean.FileSelParams
 import com.north.light.libfilesel.ui.FileSelActivity
@@ -49,6 +47,10 @@ class FileManager : Serializable {
      * */
     fun start(activity: Activity?) {
         if (activity == null) return
+        if (this.getParams()?.mFormat.isNullOrEmpty()) {
+            fileError("传入参数错误")
+            return
+        }
         val intent = Intent(activity, FileSelActivity::class.java)
         activity.startActivity(intent)
     }
@@ -70,7 +72,7 @@ class FileManager : Serializable {
     /**
      * activity 扫描错误
      * */
-    fun fileError(message: String?){
+    fun fileError(message: String?) {
         mListener?.error(message)
     }
 
@@ -84,8 +86,8 @@ class FileManager : Serializable {
         this.mListener = listener
     }
 
-    fun removeSelListener(){
-        this.mListener=null
+    fun removeSelListener() {
+        this.mListener = null
     }
 
 

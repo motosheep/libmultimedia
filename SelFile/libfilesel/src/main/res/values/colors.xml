@@ -2,4 +2,6 @@
 <resources>
     <color name="file_theme_color">#00BFFF</color>
     <color name="file_theme_tx_color">#EBEAEA</color>
+    <color name="file_theme_content_color">#FFFFFF</color>
+    <color name="file_theme_content_tx_color">#262626</color>
 </resources>

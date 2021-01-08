@@ -4,8 +4,10 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.north.light.libfilesel.FileManager
 import com.north.light.libfilesel.R
 import com.north.light.libfilesel.adapter.FileInfoAdapter
 import com.north.light.libfilesel.bean.FileInfo
@@ -17,7 +19,7 @@ import kotlinx.android.synthetic.main.fragment_file_sel.*
  * desc:文件选择fragment
  */
 class FileSelFragment : BaseFileSelFragment() {
-    private var mInfoAdapter:FileInfoAdapter?=null
+    private var mInfoAdapter: FileInfoAdapter? = null
 
     companion object {
         @JvmStatic
@@ -64,6 +66,9 @@ class FileSelFragment : BaseFileSelFragment() {
      * */
     override fun confirm() {
         super.confirm()
+        //选择数据并进行回调
+        FileManager.getInstance().fileResult(mInfoAdapter?.getSelList())
+        activity?.finish()
     }
 
     /**
@@ -72,10 +77,22 @@ class FileSelFragment : BaseFileSelFragment() {
     private fun initView() {
         //初始化数据
         mInfoAdapter = FileInfoAdapter(context!!)
-        fragment_file_sel_recyclerview.layoutManager = LinearLayoutManager(context,
-            LinearLayoutManager.VERTICAL,false)
+        fragment_file_sel_recyclerview.layoutManager = LinearLayoutManager(
+            context,
+            LinearLayoutManager.VERTICAL, false
+        )
         fragment_file_sel_recyclerview.adapter = mInfoAdapter
-        fragment_file_sel_refresh.setColorSchemeColors(ContextCompat.getColor(context!!,R.color.file_theme_color))
+        fragment_file_sel_refresh.setColorSchemeColors(
+            ContextCompat.getColor(
+                context!!,
+                R.color.file_theme_color
+            )
+        )
+        mInfoAdapter?.setOnClickListener(object : FileInfoAdapter.OnClickListener {
+            override fun tips(message: String) {
+                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            }
+        })
         initScan()
         fragment_file_sel_refresh.setOnRefreshListener {
             //开始扫描
@@ -87,20 +104,34 @@ class FileSelFragment : BaseFileSelFragment() {
     /**
      * 加载数据
      * */
-    private fun getData(){
+    private fun getData() {
         fragment_file_sel_refresh.isRefreshing = true
         scan()
     }
 
+    /**
+     * 数据扫描返回
+     * */
     override fun scanResult(result: MutableList<FileInfo>?) {
         super.scanResult(result)
-        fragment_file_sel_refresh.isRefreshing = false
-
+        activity?.runOnUiThread {
+            fragment_file_sel_refresh.isRefreshing = false
+            //设置数据
+            mInfoAdapter?.setInfo(result)
+        }
     }
 
+    /**
+     * 数据扫描错误
+     * */
     override fun scanError(message: String?) {
         super.scanError(message)
-        fragment_file_sel_refresh.isRefreshing = false
+        activity?.runOnUiThread {
+            fragment_file_sel_refresh.isRefreshing = false
+            if (!message.isNullOrBlank()) {
+                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            }
+        }
 
     }
 }

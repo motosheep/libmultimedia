@@ -1,10 +1,14 @@
 package com.north.light.libfilesel.utils;
 
+import android.Manifest;
 import android.content.ContentResolver;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.provider.MediaStore;
 import android.text.TextUtils;
+
+import androidx.core.app.ActivityCompat;
 
 import com.north.light.libfilesel.FileManager;
 import com.north.light.libfilesel.api.FinishCallback;
@@ -51,14 +55,8 @@ public class FileScanManager implements Serializable, FileScanManagerInterface {
     private static AtomicInteger mNumCounter = new AtomicInteger(0);
     //一个List的大小--分割list
     private int MAX_LIST_COUNT = 5;
-    private final int THREAD_COUNT = 20;
+    private final int THREAD_COUNT = 6;
     //全盘扫描----------------------------------------------------------
-
-
-    //content provider扫描----------------------------------------------------------
-
-
-    //content provider扫描----------------------------------------------------------
 
 
     private static final class SingleHolder {
@@ -70,7 +68,7 @@ public class FileScanManager implements Serializable, FileScanManagerInterface {
     }
 
     /**
-     * 递归扫描本地文件
+     * 递归扫描本地文件--低配手机有bug
      */
     @Override
     public void scanLocal() {
@@ -85,6 +83,13 @@ public class FileScanManager implements Serializable, FileScanManagerInterface {
      */
     @Override
     public void scanDatabase() {
+        if (ActivityCompat.checkSelfPermission(mContext, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED
+                || ActivityCompat.checkSelfPermission(mContext, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            if (mListener != null) {
+                mListener.error("需要授权");
+            }
+            return;
+        }
         FileScanInfo.setMStopTAG(new AtomicBoolean(false));
         FileThreadManager.getInstance().closeAllExecutors();
         FileThreadManager.getInstance().getCacheExecutors("LOCAL_DATABASE").execute(new Runnable() {
@@ -181,6 +186,13 @@ public class FileScanManager implements Serializable, FileScanManagerInterface {
      * 全盘扫描：扫描特定目录下的文件
      */
     private void scanStart(final String path) {
+        if (ActivityCompat.checkSelfPermission(mContext, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED
+                || ActivityCompat.checkSelfPermission(mContext, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            if (mListener != null) {
+                mListener.error("需要授权");
+            }
+            return;
+        }
         if (mContext == null) {
             if (mListener != null)
                 mListener.error("初始化失败，停止扫描");
@@ -244,7 +256,7 @@ public class FileScanManager implements Serializable, FileScanManagerInterface {
             });
         } catch (Exception e) {
             if (mListener != null) {
-                mListener.scanResult(FileScanInfo.Companion.getDataMap(path));
+                mListener.error(e.getMessage());
             }
         }
     }

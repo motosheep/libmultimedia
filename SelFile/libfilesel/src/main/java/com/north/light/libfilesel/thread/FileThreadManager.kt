@@ -56,7 +56,7 @@ class FileThreadManager : Serializable {
      * 自动分配任务
      * */
     fun getAutoCacheExecutors(count: Int, runnable: Runnable) {
-        getCacheExecutors("auto" + (count % 10)).submit(runnable)
+        getCacheExecutors("auto" + (count % 3)).execute(runnable)
     }
 
     /**

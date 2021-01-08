@@ -45,8 +45,8 @@ class FileScanRunnable : Runnable {
         if (FileScanInfo.mStopTAG.get()) {
             return
         }
-        val files = file.listFiles()
         try {
+            val files: Array<File>? = file.listFiles()
             if (files != null)
                 for (f in files) {
                     if (!f.isDirectory) {
