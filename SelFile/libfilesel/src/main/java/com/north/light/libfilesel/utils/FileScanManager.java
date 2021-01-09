@@ -86,7 +86,7 @@ public class FileScanManager implements Serializable, FileScanManagerInterface {
         if (ActivityCompat.checkSelfPermission(mContext, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED
                 || ActivityCompat.checkSelfPermission(mContext, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
             if (mListener != null) {
-                mListener.error("需要授权");
+                mListener.error("需读写权限");
             }
             return;
         }
@@ -189,7 +189,7 @@ public class FileScanManager implements Serializable, FileScanManagerInterface {
         if (ActivityCompat.checkSelfPermission(mContext, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED
                 || ActivityCompat.checkSelfPermission(mContext, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
             if (mListener != null) {
-                mListener.error("需要授权");
+                mListener.error("需要读写权限");
             }
             return;
         }
