@@ -16,5 +16,6 @@ class FileSelParams : Serializable {
     var mSelMinSize: Long = 0
     //选择文件的大小--默认为0不过滤--最大的大小--字节为单位
     var mSelMaxSize: Long = 0
-
+    //扫描的方式:1ContentProvider 2多线程扫描
+    var mScanWay = 1
 }

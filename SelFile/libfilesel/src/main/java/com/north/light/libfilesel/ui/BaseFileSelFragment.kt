@@ -1,6 +1,7 @@
 package com.north.light.libfilesel.ui
 
 import androidx.fragment.app.Fragment
+import com.north.light.libfilesel.FileManager
 import com.north.light.libfilesel.bean.FileInfo
 import com.north.light.libfilesel.utils.FileScanManager
 
@@ -38,8 +39,11 @@ abstract class BaseFileSelFragment : Fragment() {
      * 开始扫描
      * */
     fun scan() {
-        //查询数据
-        FileScanManager.getInstance().scanDatabase()
+        //查询数据--根据入参，进行不同的方式扫描
+        when (FileManager.getInstance().getParams()?.mScanWay) {
+            1 -> FileScanManager.getInstance().scanDatabase()
+            else -> FileScanManager.getInstance().scanLocal()
+        }
     }
 
     /**
