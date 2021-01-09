@@ -5,6 +5,20 @@ apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-android-extensions'
 
 android {
+    signingConfigs {
+        debug {
+            storeFile file('../selfile.jks')
+            keyAlias = 'selfile'
+            storePassword '123456'
+            keyPassword '123456'
+        }
+        release {
+            storeFile file('../selfile.jks')
+            keyAlias = 'selfile'
+            storePassword '123456'
+            keyPassword '123456'
+        }
+    }
     compileSdkVersion 29
     buildToolsVersion "29.0.3"
     defaultConfig {
@@ -17,8 +31,15 @@ android {
     }
     buildTypes {
         release {
-            minifyEnabled false
+            //Zipalign优化
+            zipAlignEnabled true
+            minifyEnabled true
+            shrinkResources true //是否去除无效的资源文件
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
+        }
+        debug {
+            signingConfig signingConfigs.debug
         }
     }
 }
