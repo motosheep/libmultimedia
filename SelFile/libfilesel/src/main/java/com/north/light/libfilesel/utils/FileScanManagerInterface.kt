@@ -10,8 +10,10 @@ import android.content.Context
 interface FileScanManagerInterface {
     fun init(context: Context)
     fun release()
-    //扫描本地全部
+    //扫描本地全部--多线程
     fun scanLocal()
     //扫描数据库
     fun scanDatabase()
+    //扫描本地全部--kotlin 协程
+    fun scanLocalWithCor()
 }

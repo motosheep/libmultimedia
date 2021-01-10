@@ -2,12 +2,10 @@ package com.north.light.libfilesel.thread
 
 import android.content.ContentResolver
 import android.provider.MediaStore
-import com.north.light.libfilesel.FileManager.Companion.getInstance
+import com.north.light.libfilesel.FileManager
 import com.north.light.libfilesel.api.FinishCallback
 import com.north.light.libfilesel.bean.FileInfo
 import com.north.light.libfilesel.bean.FileScanInfo
-import com.north.light.libfilesel.bean.FileScanInfo.Companion.clearMap
-import com.north.light.libfilesel.bean.FileScanInfo.Companion.mStopTAG
 import com.north.light.libfilesel.utils.FileScanManager
 import java.io.File
 
@@ -55,12 +53,12 @@ class FileDatabaseScanRunnable : Runnable {
                     cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA)
             }
             if (cursor != null) {
-                clearMap(TAG_DATA_BASE_NAME)
-                while (cursor.moveToNext() && !mStopTAG.get()) {
+                FileScanInfo.clearMap(TAG_DATA_BASE_NAME)
+                while (cursor.moveToNext() && ! FileScanInfo.mStopTAG.get()) {
                     val path = cursor.getString(columnIndexOrThrow_DATA)
                     val cacheFile = File(path)
                     if (!cacheFile.isDirectory) {
-                        val params = getInstance().getParams() ?: continue
+                        val params = FileManager.getInstance().getParams() ?: continue
                         val format =
                             cacheFile.name.substring(cacheFile.name.lastIndexOf(".") + 1)
                                 .toLowerCase()
@@ -75,8 +73,7 @@ class FileDatabaseScanRunnable : Runnable {
                             continue
                         }
                         //至此，认为符合条件--加入集合
-                        val info =
-                            FileInfo()
+                        val info = FileInfo()
                         info.fileName = cacheFile.name
                         info.filePath = cacheFile.absolutePath
                         info.fileModifyDate = cacheFile.lastModified()

@@ -43,6 +43,7 @@ abstract class BaseFileSelFragment : Fragment() {
         //查询数据--根据入参，进行不同的方式扫描
         when (FileManager.getInstance().getParams()?.mScanWay) {
             1 -> FileScanManager.instance.scanDatabase()
+            3 -> FileScanManager.instance.scanLocalWithCor()
             else -> FileScanManager.instance.scanLocal()
         }
     }

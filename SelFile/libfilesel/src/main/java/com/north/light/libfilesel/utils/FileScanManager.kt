@@ -7,11 +7,8 @@ import android.text.TextUtils
 import androidx.core.app.ActivityCompat
 import com.north.light.libfilesel.api.FinishCallback
 import com.north.light.libfilesel.bean.FileInfo
-import com.north.light.libfilesel.bean.FileScanInfo.Companion.clearAll
-import com.north.light.libfilesel.bean.FileScanInfo.Companion.clearMap
-import com.north.light.libfilesel.bean.FileScanInfo.Companion.getDataBaseList
-import com.north.light.libfilesel.bean.FileScanInfo.Companion.getLocalList
-import com.north.light.libfilesel.bean.FileScanInfo.Companion.mStopTAG
+import com.north.light.libfilesel.bean.FileScanInfo
+import com.north.light.libfilesel.thread.FileCoroutineScan
 import com.north.light.libfilesel.thread.FileDatabaseScanRunnable
 import com.north.light.libfilesel.thread.FileLocalScanRunnable
 import com.north.light.libfilesel.thread.FileThreadManager
@@ -70,32 +67,67 @@ class FileScanManager : Serializable, FileScanManagerInterface {
                 Manifest.permission.READ_EXTERNAL_STORAGE
             ) != PackageManager.PERMISSION_GRANTED
         ) {
-            if (mListener != null) {
-                mListener!!.error("需读写权限")
-            }
+            mListener?.error("需读写权限")
+
             return
         }
         if (context == null) {
-            if (mListener != null) mListener!!.error("初始化失败，停止扫描")
+            mListener?.error("初始化失败，停止扫描")
             return
         }
-        mStopTAG = AtomicBoolean(false)
+        FileScanInfo.mStopTAG = AtomicBoolean(false)
         FileThreadManager.getInstance().closeAllExecutors()
         FileThreadManager.getInstance().getCacheExecutors("LOCAL_DATABASE")
             .execute(FileDatabaseScanRunnable(object : FinishCallback {
                 override fun finish() {
-                    if (mListener != null) {
-                        mListener!!.scanResult(getDataBaseList())
-                    }
+                    mListener?.scanResult(FileScanInfo.getDataBaseList())
                 }
 
                 override fun init() {}
                 override fun error(message: String?) {
-                    if (mListener != null) {
-                        mListener!!.error(message)
-                    }
+                    mListener?.error(message)
                 }
             }))
+    }
+
+    /**
+     * 协程扫描
+     * */
+    override fun scanLocalWithCor() {
+        if (ActivityCompat.checkSelfPermission(
+                context!!,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE
+            ) != PackageManager.PERMISSION_GRANTED
+            || ActivityCompat.checkSelfPermission(
+                context!!,
+                Manifest.permission.READ_EXTERNAL_STORAGE
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            mListener?.error("需要读写权限")
+            return
+        }
+        if (context == null) {
+            mListener?.error("初始化失败，停止扫描")
+            return
+        }
+        val localRootPath = OpenFileUtils.rootPath
+        if (TextUtils.isEmpty(localRootPath)) {
+            mListener?.error("目录错误，停止扫描")
+            return
+        }
+        FileScanInfo.mStopTAG.set(false)
+        FileCoroutineScan.getInstance().run(localRootPath, object : FinishCallback {
+            override fun finish() {
+                mListener?.scanResult(FileScanInfo.getCorList())
+            }
+
+            override fun init() {
+            }
+
+            override fun error(message: String?) {
+                mListener?.error(message)
+            }
+        })
     }
 
     /**
@@ -112,7 +144,8 @@ class FileScanManager : Serializable, FileScanManagerInterface {
      */
     override fun release() {
         try {
-            mStopTAG = AtomicBoolean(true)
+            FileCoroutineScan.getInstance().removeJob()
+            FileScanInfo.mStopTAG = AtomicBoolean(true)
             FileThreadManager.getInstance().closeAllExecutors()
             context = null
         } catch (e: Exception) {
@@ -132,24 +165,22 @@ class FileScanManager : Serializable, FileScanManagerInterface {
                 Manifest.permission.READ_EXTERNAL_STORAGE
             ) != PackageManager.PERMISSION_GRANTED
         ) {
-            if (mListener != null) {
-                mListener!!.error("需要读写权限")
-            }
+            mListener?.error("需要读写权限")
             return
         }
         if (context == null) {
-            if (mListener != null) mListener!!.error("初始化失败，停止扫描")
+            mListener?.error("初始化失败，停止扫描")
             return
         }
         if (TextUtils.isEmpty(path)) {
-            if (mListener != null) mListener!!.error("目录错误，停止扫描")
+            mListener?.error("目录错误，停止扫描")
             return
         }
         //扫描--通过数据集合，平局分配对应的线程任务
         try {
-            mStopTAG = AtomicBoolean(false)
+            FileScanInfo.mStopTAG = AtomicBoolean(false)
             FileThreadManager.getInstance().closeAllExecutors()
-            clearAll()
+            FileScanInfo.clearAll()
             val files = File(path).listFiles()?.toMutableList()
             val result = ListSpilt.splitList(files, MAX_LIST_COUNT)
             val finalList: MutableList<MutableList<File>?> = result
@@ -157,10 +188,10 @@ class FileScanManager : Serializable, FileScanManagerInterface {
             mThreadCounter.set(0)
             mNumCounter.set(0)
             mNewThreadTAG.set(true)
-            clearMap(path)
+            FileScanInfo.clearMap(path)
             FileThreadManager.getInstance().getCacheExecutors("SCAN_PARENT")
                 .execute {
-                    while (!mStopTAG.get()) {
+                    while (!FileScanInfo.mStopTAG.get()) {
                         if (mThreadCounter.get() < THREAD_COUNT) {
                             if (!mNewThreadTAG.get()) {
                                 continue
@@ -177,9 +208,7 @@ class FileScanManager : Serializable, FileScanManagerInterface {
                                     path,
                                     object : FinishCallback {
                                         override fun error(message: String?) {
-                                            if (mListener != null) {
-                                                mListener!!.error(message)
-                                            }
+                                            mListener?.error(message)
                                         }
 
                                         override fun finish() {
@@ -187,9 +216,7 @@ class FileScanManager : Serializable, FileScanManagerInterface {
                                             mTotalCounter.incrementAndGet()
                                             //执行到最后的判断
                                             if (mTotalCounter.get() == finalList.size) { //至此，全部扫描完毕
-                                                if (mListener != null) {
-                                                    mListener!!.scanResult(getLocalList())
-                                                }
+                                                mListener?.scanResult(FileScanInfo.getLocalList())
                                             }
                                         }
 
@@ -202,9 +229,7 @@ class FileScanManager : Serializable, FileScanManagerInterface {
                     }
                 }
         } catch (e: Exception) {
-            if (mListener != null) {
-                mListener!!.error(e.message)
-            }
+            mListener?.error(e.message)
         }
     }
 
@@ -225,7 +250,6 @@ class FileScanManager : Serializable, FileScanManagerInterface {
     }
 
     companion object {
-        private val TAG = FileScanManager::class.java.simpleName
         //全盘扫描----------------------------------------------------------
         //计数器--管理线程数量大小
         private val mThreadCounter = AtomicInteger(0)

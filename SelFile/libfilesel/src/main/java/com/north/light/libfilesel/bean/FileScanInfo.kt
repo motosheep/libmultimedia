@@ -28,13 +28,20 @@ class FileScanInfo : Serializable {
             return getDataMap("database")
         }
 
-
         /**
          * 获取local file数据集合
          * */
         @JvmStatic
         fun getLocalList(): MutableList<FileInfo>{
             return getDataMap("local")
+        }
+
+        /**
+         * 获取coroutine file数据集合
+         * */
+        @JvmStatic
+        fun getCorList(): MutableList<FileInfo>{
+            return getDataMap("cor")
         }
 
         /**
