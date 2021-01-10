@@ -22,12 +22,13 @@ abstract class BaseFileSelFragment : Fragment() {
      * init scan
      * */
     fun initScan() {
-        FileScanManager.getInstance().init(this.context!!.applicationContext)
-        FileScanManager.getInstance()
+        FileScanManager.instance.init(this.context!!.applicationContext)
+        FileScanManager.instance
             .setScanFileListener(object : FileScanManager.ScanFileListener {
                 override fun scanResult(result: MutableList<FileInfo>?) {
                     this@BaseFileSelFragment.scanResult(result)
                 }
+
 
                 override fun error(message: String?) {
                     this@BaseFileSelFragment.scanError(message)
@@ -41,8 +42,8 @@ abstract class BaseFileSelFragment : Fragment() {
     fun scan() {
         //查询数据--根据入参，进行不同的方式扫描
         when (FileManager.getInstance().getParams()?.mScanWay) {
-            1 -> FileScanManager.getInstance().scanDatabase()
-            else -> FileScanManager.getInstance().scanLocal()
+            1 -> FileScanManager.instance.scanDatabase()
+            else -> FileScanManager.instance.scanLocal()
         }
     }
 
@@ -50,8 +51,8 @@ abstract class BaseFileSelFragment : Fragment() {
      * 停止扫描
      * */
     fun stopScan() {
-        FileScanManager.getInstance().removeScanFileListener()
-        FileScanManager.getInstance().release()
+        FileScanManager.instance.removeScanFileListener()
+        FileScanManager.instance.release()
     }
 
     /**

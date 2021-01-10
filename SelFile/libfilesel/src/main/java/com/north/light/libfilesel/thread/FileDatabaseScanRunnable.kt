@@ -28,8 +28,8 @@ class FileDatabaseScanRunnable : Runnable {
 
     override fun run() {
         try {
-            val provider: ContentResolver =
-                FileScanManager.getInstance().context.getContentResolver()
+            val provider: ContentResolver? =
+                FileScanManager.instance.context?.getContentResolver()
             //通过循环查询数据
             //通过循环查询数据
             val columns = arrayOf(
@@ -41,7 +41,7 @@ class FileDatabaseScanRunnable : Runnable {
             )
 //        String select = "(_data LIKE '%.pdf')";
             //        String select = "(_data LIKE '%.pdf')";
-            val cursor = provider.query(
+            val cursor = provider?.query(
                 MediaStore.Files.getContentUri("external"),
                 columns, null, null, null
             )
