@@ -15,10 +15,12 @@ import com.north.light.libfilesel.api.FinishCallback;
 import com.north.light.libfilesel.bean.FileInfo;
 import com.north.light.libfilesel.bean.FileScanInfo;
 import com.north.light.libfilesel.bean.FileSelParams;
-import com.north.light.libfilesel.thread.FileScanRunnable;
+import com.north.light.libfilesel.thread.FileDatabaseScanRunnable;
+import com.north.light.libfilesel.thread.FileLocalScanRunnable;
 import com.north.light.libfilesel.thread.FileThreadManager;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.io.Serializable;
@@ -54,10 +56,14 @@ public class FileScanManager implements Serializable, FileScanManagerInterface {
     private static AtomicBoolean mNewThreadTAG = new AtomicBoolean(true);
     private static AtomicInteger mNumCounter = new AtomicInteger(0);
     //一个List的大小--分割list
-    private int MAX_LIST_COUNT = 5;
-    private final int THREAD_COUNT = 6;
+    private int MAX_LIST_COUNT = 2;
+    private final int THREAD_COUNT = 15;
     //全盘扫描----------------------------------------------------------
 
+
+    public Context getContext() {
+        return mContext;
+    }
 
     private static final class SingleHolder {
         static final FileScanManager mInstance = new FileScanManager();
@@ -90,71 +96,34 @@ public class FileScanManager implements Serializable, FileScanManagerInterface {
             }
             return;
         }
+        if (mContext == null) {
+            if (mListener != null)
+                mListener.error("初始化失败，停止扫描");
+            return;
+        }
         FileScanInfo.setMStopTAG(new AtomicBoolean(false));
         FileThreadManager.getInstance().closeAllExecutors();
-        FileThreadManager.getInstance().getCacheExecutors("LOCAL_DATABASE").execute(new Runnable() {
+        FileThreadManager.getInstance().getCacheExecutors("LOCAL_DATABASE").execute(new FileDatabaseScanRunnable(new FinishCallback() {
             @Override
-            public void run() {
-                ContentResolver provider = mContext.getContentResolver();
-                //通过循环查询数据
-                String[] columns = new String[]{MediaStore.Files.FileColumns._ID,
-                        MediaStore.Files.FileColumns.MIME_TYPE,
-                        MediaStore.Files.FileColumns.SIZE,
-                        MediaStore.Files.FileColumns.DATE_MODIFIED,
-                        MediaStore.Files.FileColumns.DATA};
-//        String select = "(_data LIKE '%.pdf')";
-                Cursor cursor = provider.query(MediaStore.Files.getContentUri("external"),
-                        columns, null, null, null);
-//        Cursor cursor = provider.query(MediaStore.Files.getContentUri("external"),
-//                null, null, null, null);
-                int columnIndexOrThrow_DATA = 0;
-                if (cursor != null) {
-                    columnIndexOrThrow_DATA = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA);
+            public void finish() {
+                if(mListener!=null){
+                    mListener.scanResult(FileScanInfo.getDataBaseList());
                 }
-                if (cursor != null) {
-                    FileScanInfo.Companion.clearMap("database");
-                    try {
-                        while (cursor.moveToNext() && !FileScanInfo.getMStopTAG().get()) {
-                            String path = cursor.getString(columnIndexOrThrow_DATA);
-                            File cacheFile = new File(path);
-                            if (!cacheFile.isDirectory()) {
-                                FileSelParams params = FileManager.getInstance().getParams();
-                                if (params == null) {
-                                    continue;
-                                }
-                                String format = cacheFile.getName().substring(cacheFile.getName().lastIndexOf(".") + 1).toLowerCase();
-                                if (!params.getMFormat().contains(format)) {
-                                    continue;
-                                }
-                                //文件大小判断
-                                if (params.getMSelMinSize() != 0L && params.getMSelMinSize() > cacheFile.length()) {
-                                    continue;
-                                }
-                                if (params.getMSelMaxSize() != 0L && params.getMSelMaxSize() < cacheFile.length()) {
-                                    continue;
-                                }
-                                //至此，认为符合条件--加入集合
-                                FileInfo info = new FileInfo();
-                                info.setFileName(cacheFile.getName());
-                                info.setFilePath(cacheFile.getAbsolutePath());
-                                info.setFileModifyDate(cacheFile.lastModified());
-                                info.setFileLength(cacheFile.length());
-                                info.setFileParentPath(cacheFile.getParent());
-                                FileScanInfo.Companion.getDataMap("database").add(info);
-                            }
-                        }
-                        if (mListener != null) {
-                            mListener.scanResult(FileScanInfo.Companion.getDataMap("database"));
-                        }
-                    } catch (Exception e) {
-                        if (mListener != null) {
-                            mListener.error(e.getMessage());
-                        }
-                    }
-                }
-                cursor.close();
             }
-        });
+
+            @Override
+            public void init() {
+
+
+            }
+
+            @Override
+            public void error(@Nullable String message) {
+                if(mListener!=null){
+                    mListener.error(message);
+                }
+            }
+        }));
     }
 
 
@@ -207,7 +176,7 @@ public class FileScanManager implements Serializable, FileScanManagerInterface {
         try {
             FileScanInfo.setMStopTAG(new AtomicBoolean(false));
             FileThreadManager.getInstance().closeAllExecutors();
-            FileScanInfo.Companion.getDataMap(path).clear();
+            FileScanInfo.clearAll();
             File[] files = new File(path).listFiles();
             final List<List<File>> result = ListSpilt.splitList(Arrays.asList(files), MAX_LIST_COUNT);
             final List<List<File>> finalList = new ArrayList(result);
@@ -230,7 +199,14 @@ public class FileScanManager implements Serializable, FileScanManagerInterface {
                                 continue;
                             }
                             FileThreadManager.getInstance().getAutoCacheExecutors(mNumCounter.get(),
-                                    new FileScanRunnable(finalList.get(mNumCounter.getAndIncrement()), path, new FinishCallback() {
+                                    new FileLocalScanRunnable(finalList.get(mNumCounter.getAndIncrement()), path, new FinishCallback() {
+                                        @Override
+                                        public void error(@Nullable String message) {
+                                            if (mListener != null) {
+                                                mListener.error(message);
+                                            }
+                                        }
+
                                         @Override
                                         public void finish() {
                                             mThreadCounter.decrementAndGet();
@@ -239,7 +215,7 @@ public class FileScanManager implements Serializable, FileScanManagerInterface {
                                             if (mTotalCounter.get() == finalList.size()) {
                                                 //至此，全部扫描完毕
                                                 if (mListener != null) {
-                                                    mListener.scanResult(FileScanInfo.Companion.getDataMap(path));
+                                                    mListener.scanResult(FileScanInfo.getLocalList());
                                                 }
                                             }
                                         }

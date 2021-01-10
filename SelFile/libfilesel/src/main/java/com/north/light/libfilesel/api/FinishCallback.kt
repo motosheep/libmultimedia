@@ -6,6 +6,7 @@ package com.north.light.libfilesel.api
  * 描述：
  */
 interface FinishCallback {
-     fun finish()
-     fun init()
+    fun finish()
+    fun init()
+    fun error(message: String?)
 }

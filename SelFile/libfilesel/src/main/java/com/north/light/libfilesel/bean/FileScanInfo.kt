@@ -20,11 +20,27 @@ class FileScanInfo : Serializable {
         @JvmStatic
         var mStopTAG = AtomicBoolean(false)
 
+        /**
+         * 获取database数据集合
+         * */
+        @JvmStatic
+        fun getDataBaseList(): MutableList<FileInfo>{
+            return getDataMap("database")
+        }
+
+
+        /**
+         * 获取local file数据集合
+         * */
+        @JvmStatic
+        fun getLocalList(): MutableList<FileInfo>{
+            return getDataMap("local")
+        }
 
         /**
          * 获取内存中的数据集合--key--value
          */
-        fun getDataMap(key: String): MutableList<FileInfo> {
+        private fun getDataMap(key: String): MutableList<FileInfo> {
             if (TextUtils.isEmpty(key)) {
                 return ArrayList()
             }
@@ -38,6 +54,7 @@ class FileScanInfo : Serializable {
         /**
          * 清空map集合
          * */
+        @JvmStatic
         fun clearMap(key:String){
             val result = mScanResult[key]
             if (result != null) {
@@ -48,6 +65,7 @@ class FileScanInfo : Serializable {
         /**
          * 清空所有数据
          * */
+        @JvmStatic
         fun clearAll(){
             mScanResult.clear()
         }
