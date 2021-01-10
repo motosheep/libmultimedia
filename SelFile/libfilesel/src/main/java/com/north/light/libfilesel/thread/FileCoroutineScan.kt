@@ -1,6 +1,5 @@
 package com.north.light.libfilesel.thread
 
-import android.util.Log
 import com.north.light.libfilesel.FileManager
 import com.north.light.libfilesel.api.FinishCallback
 import com.north.light.libfilesel.bean.FileInfo
@@ -51,7 +50,6 @@ class FileCoroutineScan : Serializable {
      * */
     fun run(path: String, listener: FinishCallback?) {
         try {
-            Log.d("cor", "协程扫描: start")
             val totalJob = GlobalScope.async {
                 removeJob()
                 //清空原来的数据
@@ -87,7 +85,6 @@ class FileCoroutineScan : Serializable {
                         if (counter.get() == scanFileList.size) {
                             //扫描完成
                             listener?.finish()
-                            Log.d("cor", "协程扫描: end")
                         }
                     }
                     mCorMap[job.toString()] = job

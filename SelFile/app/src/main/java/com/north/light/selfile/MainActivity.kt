@@ -23,8 +23,8 @@ class MainActivity : AppCompatActivity() {
 
     fun scan(view: View) {
         FileManager.getInstance().setParams(FileSelParams().apply {
-            mFormat = mutableListOf("mp3","mp4","pdf","word")
-            mScanWay=3
+            mFormat = mutableListOf("mp3", "mp4", "pdf", "word")
+            mScanWay = 2
         }).start(this)
     }
 }
