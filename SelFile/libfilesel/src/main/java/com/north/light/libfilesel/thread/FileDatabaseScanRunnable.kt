@@ -53,7 +53,7 @@ class FileDatabaseScanRunnable : Runnable {
                     cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA)
             }
             if (cursor != null) {
-                FileScanInfo.clearMap(TAG_DATA_BASE_NAME)
+                FileScanInfo.clearAll()
                 while (cursor.moveToNext() && ! FileScanInfo.mStopTAG.get()) {
                     val path = cursor.getString(columnIndexOrThrow_DATA)
                     val cacheFile = File(path)

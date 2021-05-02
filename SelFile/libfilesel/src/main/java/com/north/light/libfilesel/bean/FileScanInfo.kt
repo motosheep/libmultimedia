@@ -58,16 +58,7 @@ class FileScanInfo : Serializable {
             return mScanResult[key] ?: ArrayList()
         }
 
-        /**
-         * 清空map集合
-         * */
-        @JvmStatic
-        fun clearMap(key:String){
-            val result = mScanResult[key]
-            if (result != null) {
-                mScanResult.remove(key)
-            }
-        }
+
 
         /**
          * 清空所有数据

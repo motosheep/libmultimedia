@@ -39,7 +39,6 @@ class FileLocalScanParentRun : Runnable {
         mThreadCounter.set(0)
         mNumCounter.set(0)
         mNewThreadTAG.set(true)
-        FileScanInfo.clearMap(path)
 
         FileThreadManager.getInstance().getCacheExecutors("SCAN_PARENT")
             .execute {
